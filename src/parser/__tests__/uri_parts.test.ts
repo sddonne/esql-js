@@ -10,14 +10,17 @@ import { Walker } from '../../ast/walker';
 import type { ESQLAstUriPartsCommand, ESQLFunction } from '../../types';
 
 describe('URI_PARTS', () => {
+  const getUriParts = (ast: ReturnType<typeof EsqlQuery.fromSrc>['ast']): ESQLAstUriPartsCommand =>
+    Walker.match(ast, {
+      type: 'command',
+      name: 'uri_parts',
+    }) as ESQLAstUriPartsCommand;
+
   describe('correctly formatted', () => {
     it('parses basic example', () => {
       const src = `FROM index | URI_PARTS prefix = url`;
       const { ast, errors } = EsqlQuery.fromSrc(src);
-      const uriParts = Walker.match(ast, {
-        type: 'command',
-        name: 'uri_parts',
-      }) as ESQLAstUriPartsCommand;
+      const uriParts = getUriParts(ast);
 
       expect(errors.length).toBe(0);
       expect(uriParts).toMatchObject({
@@ -44,7 +47,7 @@ describe('URI_PARTS', () => {
     it('parses the assignment structure correctly', () => {
       const src = `FROM index | URI_PARTS prefix = url`;
       const { ast } = EsqlQuery.fromSrc(src);
-      const uriParts = ast.commands[1] as ESQLAstUriPartsCommand;
+      const uriParts = getUriParts(ast);
 
       const assignment = uriParts.args[0] as ESQLFunction;
       expect(assignment.args[0]).toMatchObject({
@@ -60,10 +63,7 @@ describe('URI_PARTS', () => {
     it('parses with dotted qualified name', () => {
       const src = `FROM index | URI_PARTS my.prefix = url_field`;
       const { ast, errors } = EsqlQuery.fromSrc(src);
-      const uriParts = Walker.match(ast, {
-        type: 'command',
-        name: 'uri_parts',
-      }) as ESQLAstUriPartsCommand;
+      const uriParts = getUriParts(ast);
 
       expect(errors.length).toBe(0);
       expect(uriParts.targetField).toMatchObject({
@@ -74,10 +74,7 @@ describe('URI_PARTS', () => {
     it('parses with function expression as source', () => {
       const src = `FROM index | URI_PARTS parts = CONCAT(scheme, host)`;
       const { ast, errors } = EsqlQuery.fromSrc(src);
-      const uriParts = Walker.match(ast, {
-        type: 'command',
-        name: 'uri_parts',
-      }) as ESQLAstUriPartsCommand;
+      const uriParts = getUriParts(ast);
 
       expect(errors.length).toBe(0);
       expect(uriParts.expression).toMatchObject({
@@ -89,7 +86,7 @@ describe('URI_PARTS', () => {
     it('parses with quoted target prefix', () => {
       const src = 'FROM index | URI_PARTS `my-prefix` = url';
       const { ast, errors } = EsqlQuery.fromSrc(src);
-      const uriParts = ast.commands[1] as ESQLAstUriPartsCommand;
+      const uriParts = getUriParts(ast);
 
       expect(errors.length).toBe(0);
       expect(uriParts.targetField).toMatchObject({
@@ -102,7 +99,7 @@ describe('URI_PARTS', () => {
     it('parses with parameter expression as source', () => {
       const src = 'FROM index | URI_PARTS parts = ?url_param';
       const { ast, errors } = EsqlQuery.fromSrc(src);
-      const uriParts = ast.commands[1] as ESQLAstUriPartsCommand;
+      const uriParts = getUriParts(ast);
 
       expect(errors.length).toBe(0);
       expect(uriParts.expression).toMatchObject({
@@ -116,7 +113,7 @@ describe('URI_PARTS', () => {
   describe('incorrectly formatted', () => {
     it('errors on just the command keyword', () => {
       const { ast, errors } = EsqlQuery.fromSrc(`FROM index | URI_PARTS`);
-      const uriParts = ast.commands[1] as ESQLAstUriPartsCommand;
+      const uriParts = getUriParts(ast);
 
       expect(errors.length).toBeGreaterThan(0);
       expect(uriParts).toMatchObject({
@@ -133,7 +130,7 @@ describe('URI_PARTS', () => {
 
     it('errors on missing assignment', () => {
       const { ast, errors } = EsqlQuery.fromSrc(`FROM index | URI_PARTS prefix`);
-      const uriParts = ast.commands[1] as ESQLAstUriPartsCommand;
+      const uriParts = getUriParts(ast);
 
       expect(errors.length).toBeGreaterThan(0);
       expect(uriParts).toMatchObject({
@@ -149,7 +146,7 @@ describe('URI_PARTS', () => {
 
     it('errors on missing expression after assignment', () => {
       const { ast, errors } = EsqlQuery.fromSrc(`FROM index | URI_PARTS prefix =`);
-      const uriParts = ast.commands[1] as ESQLAstUriPartsCommand;
+      const uriParts = getUriParts(ast);
 
       expect(errors.length).toBeGreaterThan(0);
       expect(uriParts).toMatchObject({
